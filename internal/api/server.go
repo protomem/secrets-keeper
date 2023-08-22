@@ -47,6 +47,11 @@ func New(conf config.Config) (*Server, error) {
 		return nil, fmt.Errorf("%w: init storage: %s", err, op)
 	}
 
+	err = store.Migrate(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("%w: migrate: %s", err, op)
+	}
+
 	router := mux.NewRouter()
 	server := &http.Server{
 		Addr:    conf.BindAddr,
@@ -95,6 +100,9 @@ func (s *Server) registerOnShutdown() {
 
 func (s *Server) setupRoutes() {
 	s.router.Handle("/health", s.handleHealthCheck()).Methods(http.MethodGet)
+
+	s.router.Handle("/api/secrets/{key}", s.handleGetSecret()).Methods(http.MethodGet)
+	s.router.Handle("/api/secrets", s.handleCreateSecret()).Methods(http.MethodPost)
 }
 
 func (s *Server) startServer(_ context.Context, errs chan error) {
