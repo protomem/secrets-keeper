@@ -72,8 +72,6 @@ func (s *Server) handleGetSecret() http.Handler {
 		accessKey := string(secretKeyParts[0])
 		signingKey := string(secretKeyParts[1])
 
-		logger.Debug("getting kyes", "accessKey", accessKey, "signingKey", signingKey, "secretKey", secretKey)
-
 		secret, err := s.store.GetSecret(ctx, accessKey)
 		if err != nil {
 			logger.Error("failed to get secret", "error", err)
@@ -201,8 +199,6 @@ func (s *Server) handleCreateSecret() http.Handler {
 
 			return
 		}
-
-		logger.Debug("proccessing message", "message", req.Message, "encryptedMessage", encryptedMessage)
 
 		_, err = s.store.SaveSecret(ctx, model.Secret{
 			CreatedAt:  time.Now(),
