@@ -12,5 +12,8 @@ type Secret struct {
 
 	CreatedAt time.Time `json:"createdAt"`
 
+	AccessKey  string `json:"-"`
+	SigningKey string `json:"-"`
+
 	Message string `json:"message"`
 }

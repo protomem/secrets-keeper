@@ -11,23 +11,31 @@ import (
 )
 
 type SecretTable struct {
-	ID        int
-	CreatedAt string
-	Message   string
+	ID         int
+	CreatedAt  string
+	AccessKey  string
+	SigningKey string
+	Message    string
 }
 
-func (s *Storage) GetSecret(ctx context.Context, id int) (model.Secret, error) {
+func (s *Storage) GetSecret(ctx context.Context, accessKey string) (model.Secret, error) {
 	const op = "storage.GetSecret"
 	var err error
 
 	query := `
-        SELECT * FROM secrets WHERE id = $1 LIMIT 1
+        SELECT * FROM secrets WHERE access_key = $1 LIMIT 1
     `
 
 	var secretTable SecretTable
 	err = s.db.
-		QueryRowContext(ctx, query, id).
-		Scan(&secretTable.ID, &secretTable.CreatedAt, &secretTable.Message)
+		QueryRowContext(ctx, query, accessKey).
+		Scan(
+			&secretTable.ID,
+			&secretTable.CreatedAt,
+			&secretTable.AccessKey,
+			&secretTable.SigningKey,
+			&secretTable.Message,
+		)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return model.Secret{}, fmt.Errorf("%s: %w", op, model.ErrSecretNotFound)
@@ -49,11 +57,17 @@ func (s *Storage) SaveSecret(ctx context.Context, secret model.Secret) (int, err
 	var err error
 
 	query := `
-        INSERT INTO secrets (created_at, message) VALUES ($1, $2) RETURNING id
+        INSERT INTO secrets (created_at, access_key, signing_key, message) VALUES ($1, $2, $3, $4) RETURNING id
     `
 
 	err = s.db.
-		QueryRowContext(ctx, query, secret.CreatedAt.Format(time.RFC3339), secret.Message).
+		QueryRowContext(
+			ctx, query,
+			secret.CreatedAt.Format(time.RFC3339),
+			secret.AccessKey,
+			secret.SigningKey,
+			secret.Message,
+		).
 		Scan(&secret.ID)
 	if err != nil {
 		return 0, fmt.Errorf("%s: %w", op, err)
@@ -62,16 +76,16 @@ func (s *Storage) SaveSecret(ctx context.Context, secret model.Secret) (int, err
 	return secret.ID, nil
 }
 
-func (s *Storage) RemoveSecret(ctx context.Context, id int) error {
+func (s *Storage) RemoveSecret(ctx context.Context, accessKey string) error {
 	const op = "storage.RemoveSecret"
 	var err error
 
 	query := `
-        DELETE FROM secrets WHERE id = $1
+        DELETE FROM secrets WHERE access_key = $1
     `
 
 	_, err = s.db.
-		ExecContext(ctx, query, id)
+		ExecContext(ctx, query, accessKey)
 	if err != nil {
 		return fmt.Errorf("%s: %w", op, err)
 	}
@@ -86,8 +100,10 @@ func mapSeacretTableToSecretModel(secret SecretTable) (model.Secret, error) {
 	}
 
 	return model.Secret{
-		ID:        secret.ID,
-		CreatedAt: createdAt,
-		Message:   secret.Message,
+		ID:         secret.ID,
+		CreatedAt:  createdAt,
+		AccessKey:  secret.AccessKey,
+		SigningKey: secret.SigningKey,
+		Message:    secret.Message,
 	}, nil
 }

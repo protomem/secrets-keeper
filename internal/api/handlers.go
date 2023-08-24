@@ -1,14 +1,17 @@
 package api
 
 import (
+	"bytes"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"net/http"
-	"strconv"
 	"time"
 
 	"github.com/gorilla/mux"
+	"github.com/protomem/secrets-keeper/internal/cryptor"
 	"github.com/protomem/secrets-keeper/internal/model"
+	"github.com/protomem/secrets-keeper/pkg/randstr"
 )
 
 func (*Server) handleHealthCheck() http.Handler {
@@ -42,9 +45,9 @@ func (s *Server) handleGetSecret() http.Handler {
 			return
 		}
 
-		secretID, err := strconv.Atoi(secretKey)
+		secretKeyRaw, err := hex.DecodeString(secretKey)
 		if err != nil {
-			logger.Error("failed to convert secret key to id")
+			logger.Error("failed to decode secret key", "error", err)
 
 			w.WriteHeader(http.StatusBadRequest)
 			_ = json.NewEncoder(w).Encode(map[string]string{
@@ -54,7 +57,24 @@ func (s *Server) handleGetSecret() http.Handler {
 			return
 		}
 
-		secret, err := s.store.GetSecret(ctx, secretID)
+		secretKeyParts := bytes.Split(secretKeyRaw, []byte("$"))
+		if len(secretKeyParts) != 2 {
+			logger.Error("failed to split secret key", "error", err)
+
+			w.WriteHeader(http.StatusBadRequest)
+			_ = json.NewEncoder(w).Encode(map[string]string{
+				"error": "invalid secret key",
+			})
+
+			return
+		}
+
+		accessKey := string(secretKeyParts[0])
+		signingKey := string(secretKeyParts[1])
+
+		logger.Debug("getting kyes", "accessKey", accessKey, "signingKey", signingKey, "secretKey", secretKey)
+
+		secret, err := s.store.GetSecret(ctx, accessKey)
 		if err != nil {
 			logger.Error("failed to get secret", "error", err)
 
@@ -76,7 +96,34 @@ func (s *Server) handleGetSecret() http.Handler {
 			return
 		}
 
-		err = s.store.RemoveSecret(ctx, secretID)
+		signingKey = signingKey + secret.SigningKey
+		decodedMessage, err := cryptor.Decode(secret.Message)
+		if err != nil {
+			logger.Error("failed to decode message", "error", err)
+
+			w.WriteHeader(http.StatusInternalServerError)
+			_ = json.NewEncoder(w).Encode(map[string]string{
+				"error": "failed to decode message",
+			})
+
+			return
+		}
+
+		decryptedMessage, err := cryptor.Decrypt(decodedMessage, []byte(signingKey))
+		if err != nil {
+			logger.Error("failed to decrypt message", "error", err)
+
+			w.WriteHeader(http.StatusInternalServerError)
+			_ = json.NewEncoder(w).Encode(map[string]string{
+				"error": "failed to decrypt message",
+			})
+
+			return
+		}
+
+		secret.Message = string(decryptedMessage)
+
+		err = s.store.RemoveSecret(ctx, accessKey)
 		if err != nil {
 			logger.Error("failed to remove secret", "error", err)
 
@@ -123,11 +170,45 @@ func (s *Server) handleCreateSecret() http.Handler {
 
 		// TODO: Add validation
 		// TODO: Add expiration for Secret
-		// TODO: Crypt Secret
 
-		secretID, err := s.store.SaveSecret(ctx, model.Secret{
-			CreatedAt: time.Now(),
-			Message:   req.Message,
+		accessKey := randstr.Gen(8)
+		signingKey := randstr.Gen(8)
+		secretKey := hex.EncodeToString(bytes.Join(
+			[][]byte{[]byte(accessKey), []byte(signingKey[:4])},
+			[]byte("$"),
+		))
+
+		encryptedMessage, err := cryptor.Encrypt([]byte(req.Message), []byte(signingKey))
+		if err != nil {
+			logger.Error("failed to encrypt message", "error", err)
+
+			w.WriteHeader(http.StatusInternalServerError)
+			_ = json.NewEncoder(w).Encode(map[string]string{
+				"error": "failed to encrypt message",
+			})
+
+			return
+		}
+
+		encodedMessage, err := cryptor.Encode(encryptedMessage)
+		if err != nil {
+			logger.Error("failed to encode message", "error", err)
+
+			w.WriteHeader(http.StatusInternalServerError)
+			_ = json.NewEncoder(w).Encode(map[string]string{
+				"error": "failed to encode message",
+			})
+
+			return
+		}
+
+		logger.Debug("proccessing message", "message", req.Message, "encryptedMessage", encryptedMessage)
+
+		_, err = s.store.SaveSecret(ctx, model.Secret{
+			CreatedAt:  time.Now(),
+			AccessKey:  accessKey,
+			SigningKey: signingKey[4:],
+			Message:    encodedMessage,
 		})
 		if err != nil {
 			logger.Error("failed to save secret", "error", err)
@@ -142,7 +223,7 @@ func (s *Server) handleCreateSecret() http.Handler {
 
 		w.WriteHeader(http.StatusCreated)
 		_ = json.NewEncoder(w).Encode(map[string]string{
-			"secretKey": strconv.Itoa(secretID),
+			"secretKey": secretKey,
 		})
 	})
 }
