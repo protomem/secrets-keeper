@@ -52,9 +52,10 @@ export default function NewSecretForm({ onSubmit }: Props) {
           name="message"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Message</FormLabel>
+              <FormLabel className="text-xl font-bold">Message</FormLabel>
               <FormControl>
                 <Textarea
+                  className="text-lg"
                   placeholder="..."
                   {...field}
                   autoComplete="off"

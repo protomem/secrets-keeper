@@ -11,7 +11,9 @@ export default function ViewSecretCard({ secret }: Props) {
       <CardHeader>
         <CardTitle>Secret</CardTitle>
       </CardHeader>
-      <CardContent>{secret.message}</CardContent>
+      <CardContent className="text-lg whitespace-pre-line">
+        {secret.message}
+      </CardContent>
     </Card>
   );
 }
