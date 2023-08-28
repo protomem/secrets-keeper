@@ -100,6 +100,8 @@ func (s *Server) registerOnShutdown() {
 
 func (s *Server) setupRoutes() {
 	s.router.Use(s.requestID())
+	s.router.Use(s.requestLogger())
+	s.router.Use(s.recovery())
 
 	s.router.Handle("/health", s.handleHealthCheck()).Methods(http.MethodGet)
 
