@@ -6,13 +6,15 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/protomem/secrets-keeper/internal/cryptor"
 	"github.com/protomem/secrets-keeper/internal/model"
 	"github.com/protomem/secrets-keeper/internal/storage"
+	"github.com/protomem/secrets-keeper/pkg/randstr"
 )
 
-type UseCaseFunc[P any, R any] func(context.Context, P) (R, error)
+type UseCaseFunc[I any, O any] func(context.Context, I) (O, error)
 
 type GetSecretDTO struct {
 	SecretKey string
@@ -60,5 +62,45 @@ func GetSecret(secretRepo *storage.SecretRepository) UseCaseFunc[GetSecretDTO, m
 		}
 
 		return secret, nil
+	}
+}
+
+type CreateSecretDTO struct {
+	Message string
+}
+
+func CreateSecret(secretRepo *storage.SecretRepository) UseCaseFunc[CreateSecretDTO, string] {
+	return func(ctx context.Context, dto CreateSecretDTO) (string, error) {
+		const op = "usecase.CreateSecret"
+		var err error
+
+		accessKey := randstr.Gen(8)
+		signingKey := randstr.Gen(8)
+		secretKey := hex.EncodeToString(bytes.Join(
+			[][]byte{[]byte(accessKey), []byte(signingKey[:4])},
+			[]byte("$"),
+		))
+
+		encryptedMessage, err := cryptor.Encrypt([]byte(dto.Message), []byte(signingKey))
+		if err != nil {
+			return "", fmt.Errorf("%s: %w", op, err)
+		}
+
+		encodedMessage, err := cryptor.Encode(encryptedMessage)
+		if err != nil {
+			return "", fmt.Errorf("%s: %w", op, err)
+		}
+
+		_, err = secretRepo.SaveSecret(ctx, model.Secret{
+			CreatedAt:  time.Now(),
+			AccessKey:  accessKey,
+			SigningKey: signingKey[4:],
+			Message:    encodedMessage,
+		})
+		if err != nil {
+			return "", fmt.Errorf("%s: %w", op, err)
+		}
+
+		return secretKey, nil
 	}
 }
