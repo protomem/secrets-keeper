@@ -99,6 +99,7 @@ func (s *Server) registerOnShutdown() {
 }
 
 func (s *Server) setupRoutes() {
+	s.router.Use(s.requestID())
 	s.router.Use(s.CORS())
 
 	s.router.Handle("/health", s.handleHealthCheck()).Methods(http.MethodGet)

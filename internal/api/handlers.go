@@ -8,6 +8,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/protomem/secrets-keeper/internal/model"
 	"github.com/protomem/secrets-keeper/internal/usecase"
+	"github.com/protomem/secrets-keeper/pkg/requestid"
 )
 
 func (*Server) handleHealthCheck() http.Handler {
@@ -30,7 +31,10 @@ func (s *Server) handleGetSecret() http.Handler {
 		var err error
 
 		ctx := r.Context()
-		logger := s.logger.With("operation", op)
+		logger := s.logger.With(
+			"operation", op,
+			requestid.LogKey, requestid.Extract(ctx),
+		)
 
 		defer func() {
 			if err != nil {
@@ -97,7 +101,10 @@ func (s *Server) handleCreateSecret() http.Handler {
 		var err error
 
 		ctx := r.Context()
-		logger := s.logger.With("operation", op)
+		logger := s.logger.With(
+			"operation", op,
+			requestid.LogKey, requestid.Extract(ctx),
+		)
 
 		defer func() {
 			if err != nil {
