@@ -11,25 +11,12 @@ func (s *Storage) Migrate(ctx context.Context) error {
 	const op = "storage.Migrate"
 	var err error
 
-	migrationsFile, err := assets.Assets.Open("migrations/migrations.sql")
-	if err != nil {
-		return fmt.Errorf("%s: %w", op, err)
-	}
-	defer func() { _ = migrationsFile.Close() }()
-
-	migrationsFileStat, err := migrationsFile.Stat()
+	migrationsFile, err := assets.Assets.ReadFile("migrations/migrations.sql")
 	if err != nil {
 		return fmt.Errorf("%s: %w", op, err)
 	}
 
-	migrations := make([]byte, migrationsFileStat.Size())
-
-	_, err = migrationsFile.Read(migrations)
-	if err != nil {
-		return fmt.Errorf("%s: %w", op, err)
-	}
-
-	_, err = s.db.ExecContext(ctx, string(migrations))
+	_, err = s.db.ExecContext(ctx, string(migrationsFile))
 	if err != nil {
 		return fmt.Errorf("%s: %w", op, err)
 	}
