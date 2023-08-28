@@ -8,17 +8,32 @@ import (
 	"time"
 
 	"github.com/protomem/secrets-keeper/internal/model"
+	"github.com/protomem/secrets-keeper/pkg/logging"
 )
 
-type SecretTable struct {
-	ID         int
-	CreatedAt  string
-	AccessKey  string
-	SigningKey string
-	Message    string
+type (
+	SecretTable struct {
+		ID         int
+		CreatedAt  string
+		AccessKey  string
+		SigningKey string
+		Message    string
+	}
+
+	SecretRepository struct {
+		logger logging.Logger
+		db     *sql.DB
+	}
+)
+
+func (s *Storage) SecretRepo() *SecretRepository {
+	return &SecretRepository{
+		logger: s.logger.With("repository", "secret"),
+		db:     s.db,
+	}
 }
 
-func (s *Storage) GetSecret(ctx context.Context, accessKey string) (model.Secret, error) {
+func (r *SecretRepository) GetSecret(ctx context.Context, accessKey string) (model.Secret, error) {
 	const op = "storage.GetSecret"
 	var err error
 
@@ -27,7 +42,7 @@ func (s *Storage) GetSecret(ctx context.Context, accessKey string) (model.Secret
     `
 
 	var secretTable SecretTable
-	err = s.db.
+	err = r.db.
 		QueryRowContext(ctx, query, accessKey).
 		Scan(
 			&secretTable.ID,
@@ -52,7 +67,7 @@ func (s *Storage) GetSecret(ctx context.Context, accessKey string) (model.Secret
 	return secret, nil
 }
 
-func (s *Storage) SaveSecret(ctx context.Context, secret model.Secret) (int, error) {
+func (r *SecretRepository) SaveSecret(ctx context.Context, secret model.Secret) (int, error) {
 	const op = "storage.SaveSecret"
 	var err error
 
@@ -60,7 +75,7 @@ func (s *Storage) SaveSecret(ctx context.Context, secret model.Secret) (int, err
         INSERT INTO secrets (created_at, access_key, signing_key, message) VALUES ($1, $2, $3, $4) RETURNING id
     `
 
-	err = s.db.
+	err = r.db.
 		QueryRowContext(
 			ctx, query,
 			secret.CreatedAt.Format(time.RFC3339),
@@ -76,7 +91,7 @@ func (s *Storage) SaveSecret(ctx context.Context, secret model.Secret) (int, err
 	return secret.ID, nil
 }
 
-func (s *Storage) RemoveSecret(ctx context.Context, accessKey string) error {
+func (r *SecretRepository) RemoveSecret(ctx context.Context, accessKey string) error {
 	const op = "storage.RemoveSecret"
 	var err error
 
@@ -84,7 +99,7 @@ func (s *Storage) RemoveSecret(ctx context.Context, accessKey string) error {
         DELETE FROM secrets WHERE access_key = $1
     `
 
-	_, err = s.db.
+	_, err = r.db.
 		ExecContext(ctx, query, accessKey)
 	if err != nil {
 		return fmt.Errorf("%s: %w", op, err)

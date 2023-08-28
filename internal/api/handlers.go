@@ -72,7 +72,7 @@ func (s *Server) handleGetSecret() http.Handler {
 		accessKey := string(secretKeyParts[0])
 		signingKey := string(secretKeyParts[1])
 
-		secret, err := s.store.GetSecret(ctx, accessKey)
+		secret, err := s.store.SecretRepo().GetSecret(ctx, accessKey)
 		if err != nil {
 			logger.Error("failed to get secret", "error", err)
 
@@ -121,7 +121,7 @@ func (s *Server) handleGetSecret() http.Handler {
 
 		secret.Message = string(decryptedMessage)
 
-		err = s.store.RemoveSecret(ctx, accessKey)
+		err = s.store.SecretRepo().RemoveSecret(ctx, accessKey)
 		if err != nil {
 			logger.Error("failed to remove secret", "error", err)
 
@@ -200,7 +200,7 @@ func (s *Server) handleCreateSecret() http.Handler {
 			return
 		}
 
-		_, err = s.store.SaveSecret(ctx, model.Secret{
+		_, err = s.store.SecretRepo().SaveSecret(ctx, model.Secret{
 			CreatedAt:  time.Now(),
 			AccessKey:  accessKey,
 			SigningKey: signingKey[4:],
