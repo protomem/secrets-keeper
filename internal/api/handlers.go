@@ -11,6 +11,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/protomem/secrets-keeper/internal/cryptor"
 	"github.com/protomem/secrets-keeper/internal/model"
+	"github.com/protomem/secrets-keeper/internal/usecase"
 	"github.com/protomem/secrets-keeper/pkg/randstr"
 )
 
@@ -25,11 +26,22 @@ func (*Server) handleHealthCheck() http.Handler {
 }
 
 func (s *Server) handleGetSecret() http.Handler {
+	type Response struct {
+		Secret model.Secret `json:"secret"`
+	}
+
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		const op = "server.GetSecret"
 		var err error
+
 		ctx := r.Context()
 		logger := s.logger.With("operation", op)
+
+		defer func() {
+			if err != nil {
+				logger.Error("failed to handle request", "error", err)
+			}
+		}()
 
 		w.Header().Set("Content-Type", "application/json")
 
@@ -38,41 +50,16 @@ func (s *Server) handleGetSecret() http.Handler {
 			logger.Error("failed to get secret key")
 
 			w.WriteHeader(http.StatusBadRequest)
-			_ = json.NewEncoder(w).Encode(map[string]string{
+			err = json.NewEncoder(w).Encode(map[string]string{
 				"error": "missing secret key",
 			})
 
 			return
 		}
 
-		secretKeyRaw, err := hex.DecodeString(secretKey)
-		if err != nil {
-			logger.Error("failed to decode secret key", "error", err)
-
-			w.WriteHeader(http.StatusBadRequest)
-			_ = json.NewEncoder(w).Encode(map[string]string{
-				"error": "invalid secret key",
-			})
-
-			return
-		}
-
-		secretKeyParts := bytes.Split(secretKeyRaw, []byte("$"))
-		if len(secretKeyParts) != 2 {
-			logger.Error("failed to split secret key", "error", err)
-
-			w.WriteHeader(http.StatusBadRequest)
-			_ = json.NewEncoder(w).Encode(map[string]string{
-				"error": "invalid secret key",
-			})
-
-			return
-		}
-
-		accessKey := string(secretKeyParts[0])
-		signingKey := string(secretKeyParts[1])
-
-		secret, err := s.store.SecretRepo().GetSecret(ctx, accessKey)
+		secret, err := usecase.GetSecret(s.store.SecretRepo())(ctx, usecase.GetSecretDTO{
+			SecretKey: secretKey,
+		})
 		if err != nil {
 			logger.Error("failed to get secret", "error", err)
 
@@ -84,58 +71,19 @@ func (s *Server) handleGetSecret() http.Handler {
 			if errors.Is(err, model.ErrSecretNotFound) {
 				code = http.StatusNotFound
 				res = map[string]string{
-					"error": "secret not found",
+					"error": model.ErrSecretNotFound.Error(),
 				}
 			}
 
 			w.WriteHeader(code)
-			_ = json.NewEncoder(w).Encode(res)
-
-			return
-		}
-
-		signingKey = signingKey + secret.SigningKey
-		decodedMessage, err := cryptor.Decode(secret.Message)
-		if err != nil {
-			logger.Error("failed to decode message", "error", err)
-
-			w.WriteHeader(http.StatusInternalServerError)
-			_ = json.NewEncoder(w).Encode(map[string]string{
-				"error": "failed to decode message",
-			})
-
-			return
-		}
-
-		decryptedMessage, err := cryptor.Decrypt(decodedMessage, []byte(signingKey))
-		if err != nil {
-			logger.Error("failed to decrypt message", "error", err)
-
-			w.WriteHeader(http.StatusInternalServerError)
-			_ = json.NewEncoder(w).Encode(map[string]string{
-				"error": "failed to decrypt message",
-			})
-
-			return
-		}
-
-		secret.Message = string(decryptedMessage)
-
-		err = s.store.SecretRepo().RemoveSecret(ctx, accessKey)
-		if err != nil {
-			logger.Error("failed to remove secret", "error", err)
-
-			w.WriteHeader(http.StatusInternalServerError)
-			_ = json.NewEncoder(w).Encode(map[string]string{
-				"error": "failed to get secret",
-			})
+			err = json.NewEncoder(w).Encode(res)
 
 			return
 		}
 
 		w.WriteHeader(http.StatusOK)
-		_ = json.NewEncoder(w).Encode(map[string]model.Secret{
-			"secret": secret,
+		err = json.NewEncoder(w).Encode(Response{
+			Secret: secret,
 		})
 	})
 }
