@@ -100,12 +100,13 @@ func (s *Server) registerOnShutdown() {
 
 func (s *Server) setupRoutes() {
 	s.router.Use(s.requestID())
-	s.router.Use(s.CORS())
 
 	s.router.Handle("/health", s.handleHealthCheck()).Methods(http.MethodGet)
 
-	s.router.Handle("/api/secrets/{key}", s.handleGetSecret()).Methods(http.MethodGet, http.MethodOptions)
-	s.router.Handle("/api/secrets", s.handleCreateSecret()).Methods(http.MethodPost, http.MethodOptions)
+	s.router.Handle("/api/secrets/{key}", s.handleGetSecret()).Methods(http.MethodGet)
+	s.router.Handle("/api/secrets", s.handleCreateSecret()).Methods(http.MethodPost)
+
+	s.server.Handler = s.CORS()(s.router)
 }
 
 func (s *Server) startServer(_ context.Context, errs chan error) {
