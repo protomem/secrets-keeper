@@ -90,6 +90,7 @@ func (s *Server) handleGetSecret() http.Handler {
 func (s *Server) handleCreateSecret() http.Handler {
 	type Request struct {
 		Message string `json:"message"`
+		TTL     int64  `json:"ttl"`
 	}
 
 	type Response struct {
@@ -129,6 +130,7 @@ func (s *Server) handleCreateSecret() http.Handler {
 
 		secretKey, err := usecase.CreateSecret(s.store.SecretRepo())(ctx, usecase.CreateSecretDTO{
 			Message: req.Message,
+			TTL:     req.TTL,
 		})
 		if err != nil {
 			logger.Error("failed to create secret", "error", err)

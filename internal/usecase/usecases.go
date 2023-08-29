@@ -24,6 +24,7 @@ func GetSecret(secretRepo *storage.SecretRepository) UseCaseFunc[GetSecretDTO, m
 	return func(ctx context.Context, dto GetSecretDTO) (model.Secret, error) {
 		const op = "usecase.GetSecret"
 		var err error
+		now := time.Now()
 
 		decodedSecretKey, err := hex.DecodeString(dto.SecretKey)
 		if err != nil {
@@ -41,6 +42,10 @@ func GetSecret(secretRepo *storage.SecretRepository) UseCaseFunc[GetSecretDTO, m
 		secret, err := secretRepo.GetSecret(ctx, accessKey)
 		if err != nil {
 			return model.Secret{}, fmt.Errorf("%s: %w", op, err)
+		}
+
+		if secret.ExpiredAt.Unix() < now.Unix() && secret.ExpiredAt.Unix() > secret.CreatedAt.Unix() {
+			return model.Secret{}, fmt.Errorf("%s: %w", op, model.ErrSecretNotFound)
 		}
 
 		decodedMessage, err := cryptor.Decode(secret.Message)
@@ -67,12 +72,14 @@ func GetSecret(secretRepo *storage.SecretRepository) UseCaseFunc[GetSecretDTO, m
 
 type CreateSecretDTO struct {
 	Message string
+	TTL     int64 // in hours
 }
 
 func CreateSecret(secretRepo *storage.SecretRepository) UseCaseFunc[CreateSecretDTO, string] {
 	return func(ctx context.Context, dto CreateSecretDTO) (string, error) {
 		const op = "usecase.CreateSecret"
 		var err error
+		now := time.Now()
 
 		accessKey := randstr.Gen(8)
 		signingKey := randstr.Gen(8)
@@ -92,7 +99,8 @@ func CreateSecret(secretRepo *storage.SecretRepository) UseCaseFunc[CreateSecret
 		}
 
 		_, err = secretRepo.SaveSecret(ctx, model.Secret{
-			CreatedAt:  time.Now(),
+			CreatedAt:  now,
+			ExpiredAt:  now.Add(time.Duration(dto.TTL) * time.Hour),
 			AccessKey:  accessKey,
 			SigningKey: signingKey[4:],
 			Message:    encodedMessage,

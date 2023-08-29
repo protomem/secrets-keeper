@@ -15,6 +15,7 @@ type (
 	SecretTable struct {
 		ID         int
 		CreatedAt  string
+		ExpiredAt  string
 		AccessKey  string
 		SigningKey string
 		Message    string
@@ -47,6 +48,7 @@ func (r *SecretRepository) GetSecret(ctx context.Context, accessKey string) (mod
 		Scan(
 			&secretTable.ID,
 			&secretTable.CreatedAt,
+			&secretTable.ExpiredAt,
 			&secretTable.AccessKey,
 			&secretTable.SigningKey,
 			&secretTable.Message,
@@ -72,13 +74,18 @@ func (r *SecretRepository) SaveSecret(ctx context.Context, secret model.Secret) 
 	var err error
 
 	query := `
-        INSERT INTO secrets (created_at, access_key, signing_key, message) VALUES ($1, $2, $3, $4) RETURNING id
+        INSERT INTO 
+            secrets (created_at, expired_at, access_key, signing_key, message) 
+        VALUES 
+            ($1, $2, $3, $4, $5) 
+        RETURNING id
     `
 
 	err = r.db.
 		QueryRowContext(
 			ctx, query,
 			secret.CreatedAt.Format(time.RFC3339),
+			secret.ExpiredAt.Format(time.RFC3339),
 			secret.AccessKey,
 			secret.SigningKey,
 			secret.Message,
@@ -114,9 +121,15 @@ func mapSeacretTableToSecretModel(secret SecretTable) (model.Secret, error) {
 		return model.Secret{}, fmt.Errorf("parse created at: %w", err)
 	}
 
+	expiredAt, err := time.Parse(time.RFC3339, secret.ExpiredAt)
+	if err != nil {
+		return model.Secret{}, fmt.Errorf("parse expired at: %w", err)
+	}
+
 	return model.Secret{
 		ID:         secret.ID,
 		CreatedAt:  createdAt,
+		ExpiredAt:  expiredAt,
 		AccessKey:  secret.AccessKey,
 		SigningKey: secret.SigningKey,
 		Message:    secret.Message,

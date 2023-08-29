@@ -11,6 +11,7 @@ type Secret struct {
 	ID int `json:"id"`
 
 	CreatedAt time.Time `json:"createdAt"`
+	ExpiredAt time.Time `json:"expiredAt"`
 
 	AccessKey  string `json:"-"`
 	SigningKey string `json:"-"`
