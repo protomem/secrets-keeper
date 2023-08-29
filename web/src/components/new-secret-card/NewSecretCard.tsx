@@ -1,5 +1,5 @@
-import NewSecretForm from "../new-secret-form/NewSecretForm";
-import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
+import NewSecretForm from "@/components/new-secret-form/NewSecretForm";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 interface Props {
   onSubmit: (secretKey: string) => void;

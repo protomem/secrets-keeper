@@ -11,6 +11,7 @@ interface GetSecretResponse {
 
 interface CreateSecretRequest {
   message: string;
+  ttl: number;
 }
 
 interface CreateSecretResponse {
@@ -30,10 +31,10 @@ export const secretsApi = createApi({
     }),
 
     createSecret: builder.mutation<CreateSecretResponse, CreateSecretRequest>({
-      query: ({ message }) => ({
+      query: ({ message, ttl }) => ({
         url: `/secrets`,
         method: "POST",
-        body: { message },
+        body: { message, ttl },
       }),
     }),
   }),

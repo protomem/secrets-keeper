@@ -13,9 +13,23 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { useCreateSecretMutation } from "@/feature/secrets/secrets.api";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 const formScheme = z.object({
   message: z.string().min(3).max(800),
+  ttl: z.number().min(0).max(3600),
 });
 
 interface Props {
@@ -27,6 +41,7 @@ export default function NewSecretForm({ onSubmit }: Props) {
     resolver: zodResolver(formScheme),
     defaultValues: {
       message: "",
+      ttl: 0,
     },
   });
 
@@ -35,6 +50,7 @@ export default function NewSecretForm({ onSubmit }: Props) {
   const handleSubmit = (data: z.infer<typeof formScheme>) => {
     createSecret({
       message: data.message,
+      ttl: data.ttl,
     })
       .unwrap()
       .then((res) => {
@@ -52,7 +68,7 @@ export default function NewSecretForm({ onSubmit }: Props) {
           name="message"
           render={({ field }) => (
             <FormItem>
-              <FormLabel className="text-xl font-bold">Message</FormLabel>
+              <FormLabel className="text-xl">Message</FormLabel>
               <FormControl>
                 <Textarea
                   className="text-lg"
@@ -69,6 +85,52 @@ export default function NewSecretForm({ onSubmit }: Props) {
             </FormItem>
           )}
         />
+
+        <Accordion type="single" collapsible>
+          <AccordionItem value="item-1" className="border-0">
+            <AccordionTrigger className="text-xl">
+              Advanced options
+            </AccordionTrigger>
+            <AccordionContent>
+              <FormField
+                control={form.control}
+                name="ttl"
+                render={({ field }) => (
+                  <FormItem className="mx-2">
+                    <FormLabel className="text-lg italic">TTL</FormLabel>
+                    <Select
+                      onValueChange={(value) => {
+                        field.onChange(+value);
+                      }}
+                      defaultValue={field.value.toString()}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                      </FormControl>
+
+                      <SelectContent>
+                        <SelectItem value="0">None</SelectItem>
+                        <SelectItem value="1">1 hour</SelectItem>
+                        <SelectItem value="3">3 hours</SelectItem>
+                        <SelectItem value="6">6 hours</SelectItem>
+                        <SelectItem value="12">12 hours</SelectItem>
+                        <SelectItem value="24">1 day</SelectItem>
+                        <SelectItem value="48">2 days</SelectItem>
+                        <SelectItem value="120">5 days</SelectItem>
+                        <SelectItem value="168">1 week</SelectItem>
+                      </SelectContent>
+                    </Select>
+
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </AccordionContent>
+          </AccordionItem>
+        </Accordion>
+
         <Button type="submit" size={"lg"}>
           <h6 className="text-lg">Create</h6>
         </Button>
