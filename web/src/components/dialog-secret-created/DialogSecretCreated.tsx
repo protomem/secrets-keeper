@@ -9,19 +9,25 @@ interface Props {
   open: boolean;
   setOpen: (open: boolean) => void;
   secretKey: string;
+  withSecretPhrase: boolean;
 }
 
 export default function DialogSecretCreated({
   open,
   setOpen,
   secretKey,
+  withSecretPhrase,
 }: Props) {
   const [copied, setCopied] = useState(false);
   useEffect(() => {
     setCopied(false);
   }, [open]);
 
-  const linkToSecret = `${window.location.origin}/secrets/${secretKey.trim()}`;
+  let linkToSecret = `${window.location.origin}/secrets/${secretKey.trim()}`;
+  if (withSecretPhrase) {
+    linkToSecret += `?withSecretPhrase=true`;
+  }
+
   const handleClick = async () => {
     await copyTextToClipboard(linkToSecret);
     setCopied(true);
@@ -45,7 +51,7 @@ export default function DialogSecretCreated({
           variant="outline"
           className="text-start text-sm w-max overflow-x-auto"
         >
-          {linkToSecret}{" "}
+          {linkToSecret}
           <Button
             size="icon"
             variant="outline"

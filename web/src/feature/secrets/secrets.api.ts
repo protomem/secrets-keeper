@@ -3,6 +3,7 @@ import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 
 interface GetSecretRequest {
   secretKey: string;
+  secretPhrase?: string;
 }
 
 interface GetSecretResponse {
@@ -12,10 +13,12 @@ interface GetSecretResponse {
 interface CreateSecretRequest {
   message: string;
   ttl: number;
+  secretPhrase?: string;
 }
 
 interface CreateSecretResponse {
   secretKey: string;
+  withSecretPhrase: boolean;
 }
 
 export const secretsApi = createApi({
@@ -25,16 +28,19 @@ export const secretsApi = createApi({
   }),
   endpoints: (builder) => ({
     getSecret: builder.query<GetSecretResponse, GetSecretRequest>({
-      query: ({ secretKey }) => ({
-        url: `/secrets/${secretKey}`,
+      query: ({ secretKey, secretPhrase }) => ({
+        url:
+          secretPhrase !== undefined
+            ? `/secrets/${secretKey}?secretPhrase=${secretPhrase}`
+            : `/secrets/${secretKey}`,
       }),
     }),
 
     createSecret: builder.mutation<CreateSecretResponse, CreateSecretRequest>({
-      query: ({ message, ttl }) => ({
+      query: ({ message, ttl, secretPhrase }) => ({
         url: `/secrets`,
         method: "POST",
-        body: { message, ttl },
+        body: { message, ttl, secretPhrase },
       }),
     }),
   }),

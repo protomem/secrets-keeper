@@ -1,6 +1,7 @@
 import * as z from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
+import { useCreateSecretMutation } from "@/feature/secrets/secrets.api";
 
 import {
   Form,
@@ -12,7 +13,6 @@ import {
 } from "@/components/ui/form";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { useCreateSecretMutation } from "@/feature/secrets/secrets.api";
 import {
   Accordion,
   AccordionContent,
@@ -26,14 +26,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
 
 const formScheme = z.object({
   message: z.string().min(3).max(800),
   ttl: z.number().min(0).max(3600),
+  secretPhrase: z.string().min(3).max(80).optional(),
 });
 
 interface Props {
-  onSubmit: (secretKey: string) => void;
+  onSubmit: (secretKey: string, withSecretPhrase: boolean) => void;
 }
 
 export default function NewSecretForm({ onSubmit }: Props) {
@@ -42,6 +44,7 @@ export default function NewSecretForm({ onSubmit }: Props) {
     defaultValues: {
       message: "",
       ttl: 0,
+      secretPhrase: undefined,
     },
   });
 
@@ -51,10 +54,11 @@ export default function NewSecretForm({ onSubmit }: Props) {
     createSecret({
       message: data.message,
       ttl: data.ttl,
+      secretPhrase: data.secretPhrase,
     })
       .unwrap()
       .then((res) => {
-        onSubmit(res.secretKey);
+        onSubmit(res.secretKey, res.withSecretPhrase);
       });
 
     form.reset();
@@ -122,6 +126,23 @@ export default function NewSecretForm({ onSubmit }: Props) {
                         <SelectItem value="168">1 week</SelectItem>
                       </SelectContent>
                     </Select>
+
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="secretPhrase"
+                render={({ field }) => (
+                  <FormItem className="mx-2 mt-4">
+                    <FormLabel className="text-lg italic">
+                      Secret phrase
+                    </FormLabel>
+                    <FormControl>
+                      <Input placeholder="..." {...field} />
+                    </FormControl>
 
                     <FormMessage />
                   </FormItem>
