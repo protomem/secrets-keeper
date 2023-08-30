@@ -56,8 +56,11 @@ func (s *Server) handleGetSecret() http.Handler {
 			return
 		}
 
+		secretPhrase := r.URL.Query().Get("secretPhrase")
+
 		secret, err := usecase.GetSecret(s.store.SecretRepo())(ctx, usecase.GetSecretDTO{
-			SecretKey: secretKey,
+			SecretKey:    secretKey,
+			SecretPhrase: secretPhrase,
 		})
 		if err != nil {
 			logger.Error("failed to get secret", "error", err)
@@ -89,12 +92,14 @@ func (s *Server) handleGetSecret() http.Handler {
 
 func (s *Server) handleCreateSecret() http.Handler {
 	type Request struct {
-		Message string `json:"message"`
-		TTL     int64  `json:"ttl"`
+		Message      string `json:"message"`
+		TTL          int64  `json:"ttl"`
+		SecretPhrase string `json:"secretPhrase"`
 	}
 
 	type Response struct {
-		SecretKey string `json:"secretKey"`
+		SecretKey        string `json:"secretKey"`
+		WithSecretPhrase bool   `json:"withSecretPhrase"`
 	}
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -129,8 +134,9 @@ func (s *Server) handleCreateSecret() http.Handler {
 		}
 
 		secretKey, err := usecase.CreateSecret(s.store.SecretRepo())(ctx, usecase.CreateSecretDTO{
-			Message: req.Message,
-			TTL:     req.TTL,
+			Message:      req.Message,
+			TTL:          req.TTL,
+			SecretPhrase: req.SecretPhrase,
 		})
 		if err != nil {
 			logger.Error("failed to create secret", "error", err)
@@ -148,7 +154,8 @@ func (s *Server) handleCreateSecret() http.Handler {
 
 		w.WriteHeader(http.StatusCreated)
 		err = json.NewEncoder(w).Encode(Response{
-			SecretKey: secretKey,
+			SecretKey:        secretKey,
+			WithSecretPhrase: req.SecretPhrase != "",
 		})
 	})
 }

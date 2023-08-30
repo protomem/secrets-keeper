@@ -10,6 +10,7 @@ import (
 
 	"github.com/protomem/secrets-keeper/internal/cryptor"
 	"github.com/protomem/secrets-keeper/internal/model"
+	"github.com/protomem/secrets-keeper/internal/passhash"
 	"github.com/protomem/secrets-keeper/internal/storage"
 	"github.com/protomem/secrets-keeper/pkg/randstr"
 )
@@ -17,7 +18,8 @@ import (
 type UseCaseFunc[I any, O any] func(context.Context, I) (O, error)
 
 type GetSecretDTO struct {
-	SecretKey string
+	SecretKey    string
+	SecretPhrase string
 }
 
 func GetSecret(secretRepo *storage.SecretRepository) UseCaseFunc[GetSecretDTO, model.Secret] {
@@ -48,6 +50,21 @@ func GetSecret(secretRepo *storage.SecretRepository) UseCaseFunc[GetSecretDTO, m
 			return model.Secret{}, fmt.Errorf("%s: %w", op, model.ErrSecretNotFound)
 		}
 
+		if secret.SecretPhrase != "" {
+			if dto.SecretPhrase == "" {
+				return model.Secret{}, fmt.Errorf("%s: %w", op, model.ErrSecretNotFound)
+			}
+
+			err = passhash.Compare(dto.SecretPhrase, secret.SecretPhrase)
+			if err != nil {
+				if errors.Is(err, passhash.ErrWrongPassword) {
+					return model.Secret{}, fmt.Errorf("%s: %w", op, model.ErrSecretNotFound)
+				}
+
+				return model.Secret{}, fmt.Errorf("%s: %w", op, err)
+			}
+		}
+
 		decodedMessage, err := cryptor.Decode(secret.Message)
 		if err != nil {
 			return model.Secret{}, fmt.Errorf("%s: %w", op, err)
@@ -71,8 +88,9 @@ func GetSecret(secretRepo *storage.SecretRepository) UseCaseFunc[GetSecretDTO, m
 }
 
 type CreateSecretDTO struct {
-	Message string
-	TTL     int64 // in hours
+	Message      string
+	TTL          int64 // in hours
+	SecretPhrase string
 }
 
 func CreateSecret(secretRepo *storage.SecretRepository) UseCaseFunc[CreateSecretDTO, string] {
@@ -98,12 +116,20 @@ func CreateSecret(secretRepo *storage.SecretRepository) UseCaseFunc[CreateSecret
 			return "", fmt.Errorf("%s: %w", op, err)
 		}
 
+		if dto.SecretPhrase != "" {
+			dto.SecretPhrase, err = passhash.Generate(dto.SecretPhrase)
+			if err != nil {
+				return "", fmt.Errorf("%s: %w", op, err)
+			}
+		}
+
 		_, err = secretRepo.SaveSecret(ctx, model.Secret{
-			CreatedAt:  now,
-			ExpiredAt:  now.Add(time.Duration(dto.TTL) * time.Hour),
-			AccessKey:  accessKey,
-			SigningKey: signingKey[4:],
-			Message:    encodedMessage,
+			CreatedAt:    now,
+			ExpiredAt:    now.Add(time.Duration(dto.TTL) * time.Hour),
+			AccessKey:    accessKey,
+			SigningKey:   signingKey[4:],
+			SecretPhrase: dto.SecretPhrase,
+			Message:      encodedMessage,
 		})
 		if err != nil {
 			return "", fmt.Errorf("%s: %w", op, err)

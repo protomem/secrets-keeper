@@ -16,5 +16,7 @@ type Secret struct {
 	AccessKey  string `json:"-"`
 	SigningKey string `json:"-"`
 
+	SecretPhrase string `json:"-"`
+
 	Message string `json:"message"`
 }

@@ -8,6 +8,8 @@ CREATE TABLE IF NOT EXISTS secrets (
     access_key  TEXT NOT NULL UNIQUE,
     signing_key TEXT NOT NULL,
 
+    secret_phrase TEXT NOT NULL,
+
     message TEXT NOT NULL
 );
 
