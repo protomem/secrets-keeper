@@ -58,7 +58,11 @@ func (s *Server) handleGetSecret() http.Handler {
 
 		secretPhrase := r.URL.Query().Get("secretPhrase")
 
-		secret, err := usecase.GetSecret(s.store.SecretRepo())(ctx, usecase.GetSecretDTO{
+		secret, err := usecase.GetSecret(
+			s.store.SecretRepo(),
+			s.encoder,
+			s.encryptor,
+		)(ctx, usecase.GetSecretDTO{
 			SecretKey:    secretKey,
 			SecretPhrase: secretPhrase,
 		})
@@ -133,7 +137,11 @@ func (s *Server) handleCreateSecret() http.Handler {
 			return
 		}
 
-		secretKey, err := usecase.CreateSecret(s.store.SecretRepo())(ctx, usecase.CreateSecretDTO{
+		secretKey, err := usecase.CreateSecret(
+			s.store.SecretRepo(),
+			s.encoder,
+			s.encryptor,
+		)(ctx, usecase.CreateSecretDTO{
 			Message:      req.Message,
 			TTL:          req.TTL,
 			SecretPhrase: req.SecretPhrase,

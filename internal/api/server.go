@@ -12,6 +12,10 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/protomem/secrets-keeper/internal/config"
+	"github.com/protomem/secrets-keeper/internal/cryptor"
+	"github.com/protomem/secrets-keeper/internal/cryptor/aes"
+	"github.com/protomem/secrets-keeper/internal/cryptor/hex"
+	"github.com/protomem/secrets-keeper/internal/cryptor/pkcs7"
 	"github.com/protomem/secrets-keeper/internal/storage"
 	"github.com/protomem/secrets-keeper/pkg/closer"
 	"github.com/protomem/secrets-keeper/pkg/logging"
@@ -23,6 +27,9 @@ type Server struct {
 	logger logging.Logger
 
 	store *storage.Storage
+
+	encoder   cryptor.Encoder
+	encryptor cryptor.Encryptor
 
 	router *mux.Router
 	server *http.Server
@@ -52,6 +59,10 @@ func New(conf config.Config) (*Server, error) {
 		return nil, fmt.Errorf("%w: migrate: %s", err, op)
 	}
 
+	encoder := hex.NewEncoder()
+	paddinger := pkcs7.NewPaddinger()
+	encryptor := aes.NewEncryptor(encoder, paddinger)
+
 	router := mux.NewRouter()
 	server := &http.Server{
 		Addr:    conf.BindAddr,
@@ -59,12 +70,14 @@ func New(conf config.Config) (*Server, error) {
 	}
 
 	return &Server{
-		conf:   conf,
-		logger: logger.With("module", "server"),
-		store:  store,
-		router: router,
-		server: server,
-		closer: closer.New(),
+		conf:      conf,
+		logger:    logger.With("module", "server"),
+		store:     store,
+		encoder:   encoder,
+		encryptor: encryptor,
+		router:    router,
+		server:    server,
+		closer:    closer.New(),
 	}, nil
 }
 
