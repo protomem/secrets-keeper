@@ -14,7 +14,7 @@ import (
 	"github.com/protomem/secrets-keeper/internal/config"
 	"github.com/protomem/secrets-keeper/internal/cryptor"
 	"github.com/protomem/secrets-keeper/internal/cryptor/aes"
-	"github.com/protomem/secrets-keeper/internal/cryptor/hex"
+	"github.com/protomem/secrets-keeper/internal/cryptor/base64"
 	"github.com/protomem/secrets-keeper/internal/cryptor/pkcs7"
 	"github.com/protomem/secrets-keeper/internal/storage"
 	"github.com/protomem/secrets-keeper/pkg/closer"
@@ -59,9 +59,9 @@ func New(conf config.Config) (*Server, error) {
 		return nil, fmt.Errorf("%w: migrate: %s", err, op)
 	}
 
-	encoder := hex.NewEncoder()
+	encoder := base64.NewEncoder(true)
 	paddinger := pkcs7.NewPaddinger()
-	encryptor := aes.NewEncryptor(encoder, paddinger)
+	encryptor := aes.NewEncryptor(base64.NewEncoder(false), paddinger)
 
 	router := mux.NewRouter()
 	server := &http.Server{
