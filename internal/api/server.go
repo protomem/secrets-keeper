@@ -17,7 +17,7 @@ import (
 	"github.com/protomem/secrets-keeper/internal/cryptor/base64"
 	"github.com/protomem/secrets-keeper/internal/cryptor/pkcs7"
 	"github.com/protomem/secrets-keeper/internal/passhash"
-	"github.com/protomem/secrets-keeper/internal/passhash/bcrypt"
+	"github.com/protomem/secrets-keeper/internal/passhash/argon2"
 	"github.com/protomem/secrets-keeper/internal/storage"
 	"github.com/protomem/secrets-keeper/pkg/closer"
 	"github.com/protomem/secrets-keeper/pkg/logging"
@@ -63,7 +63,7 @@ func New(conf config.Config) (*Server, error) {
 		return nil, fmt.Errorf("%w: migrate: %s", err, op)
 	}
 
-	hasher := bcrypt.NewHasher(bcrypt.DefaultCost)
+	hasher := argon2.NewHasher(base64.NewEncoder(false), argon2.DefaultOptions)
 
 	encoder := base64.NewEncoder(true)
 	paddinger := pkcs7.NewPaddinger()
