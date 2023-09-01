@@ -25,7 +25,7 @@ interface CreateSecretResponse {
 export const secretsApi = createApi({
   reducerPath: "secretsApi",
   baseQuery: fetchBaseQuery({
-    baseUrl: `http://${import.meta.env.VITE_API_URL}/api`,
+    baseUrl: `https://${import.meta.env.VITE_API_URL}/api`,
   }),
   endpoints: (builder) => ({
     getSecret: builder.query<GetSecretResponse, GetSecretRequest>({

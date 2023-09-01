@@ -132,7 +132,10 @@ func (s *Server) setupRoutes() {
 }
 
 func (s *Server) startServer(_ context.Context, errs chan error) {
-	err := s.server.ListenAndServe()
+	err := s.server.ListenAndServeTLS(
+		fmt.Sprintf("./configs/certs/%s.crt", s.conf.CertsName),
+		fmt.Sprintf("./configs/certs/%s.key", s.conf.CertsName),
+	)
 	if err != nil && !errors.Is(err, http.ErrServerClosed) {
 		errs <- fmt.Errorf("start server: %w", err)
 	}

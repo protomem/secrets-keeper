@@ -5,9 +5,10 @@ import (
 )
 
 type Config struct {
-	BindAddr string
-	LogLevel string
-	Database string
+	BindAddr  string
+	LogLevel  string
+	Database  string
+	CertsName string
 }
 
 func New() (Config, error) {
@@ -30,6 +31,11 @@ func New() (Config, error) {
 	conf.Database, exist = os.LookupEnv("DATABASE")
 	if !exist {
 		conf.Database = ":memory:"
+	}
+
+	conf.CertsName, exist = os.LookupEnv("CERTS_NAME")
+	if !exist {
+		conf.CertsName = "localhost"
 	}
 
 	return conf, nil

@@ -19,6 +19,7 @@ RUN apk --no-cache add sqlite
 
 WORKDIR /app
 
+COPY --from=builder /app/configs/ ./configs/
 COPY --from=builder /app/build/ ./build/
 RUN mkdir -p /app/data
 

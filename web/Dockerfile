@@ -15,4 +15,7 @@ RUN VITE_API_URL=${VITE_API_URL} yarn build
 FROM nginx:alpine
 
 COPY nginx.conf /etc/nginx/nginx.conf
+COPY ./certs/ /etc/certs/
+
 COPY --from=builder /app/dist /usr/share/nginx/html
+
