@@ -23,6 +23,7 @@ type GetSecretDTO struct {
 
 func GetSecret(
 	secretRepo *storage.SecretRepository,
+	hasher passhash.Hasher,
 	encoder cryptor.Encoder,
 	encryptor cryptor.Encryptor,
 ) UseCaseFunc[GetSecretDTO, model.Secret] {
@@ -58,7 +59,7 @@ func GetSecret(
 				return model.Secret{}, fmt.Errorf("%s: %w", op, model.ErrSecretNotFound)
 			}
 
-			err = passhash.Compare(dto.SecretPhrase, secret.SecretPhrase)
+			err = hasher.Compare(dto.SecretPhrase, secret.SecretPhrase)
 			if err != nil {
 				if errors.Is(err, passhash.ErrWrongPassword) {
 					return model.Secret{}, fmt.Errorf("%s: %w", op, model.ErrSecretNotFound)
@@ -93,6 +94,7 @@ type CreateSecretDTO struct {
 
 func CreateSecret(
 	secretRepo *storage.SecretRepository,
+	hasher passhash.Hasher,
 	encoder cryptor.Encoder,
 	encryptor cryptor.Encryptor,
 ) UseCaseFunc[CreateSecretDTO, string] {
@@ -118,7 +120,7 @@ func CreateSecret(
 		}
 
 		if dto.SecretPhrase != "" {
-			dto.SecretPhrase, err = passhash.Generate(dto.SecretPhrase)
+			dto.SecretPhrase, err = hasher.Generate(dto.SecretPhrase)
 			if err != nil {
 				return "", fmt.Errorf("%s: %w", op, err)
 			}

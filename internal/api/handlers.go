@@ -60,6 +60,7 @@ func (s *Server) handleGetSecret() http.Handler {
 
 		secret, err := usecase.GetSecret(
 			s.store.SecretRepo(),
+			s.hasher,
 			s.encoder,
 			s.encryptor,
 		)(ctx, usecase.GetSecretDTO{
@@ -139,6 +140,7 @@ func (s *Server) handleCreateSecret() http.Handler {
 
 		secretKey, err := usecase.CreateSecret(
 			s.store.SecretRepo(),
+			s.hasher,
 			s.encoder,
 			s.encryptor,
 		)(ctx, usecase.CreateSecretDTO{

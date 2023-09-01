@@ -16,6 +16,8 @@ import (
 	"github.com/protomem/secrets-keeper/internal/cryptor/aes"
 	"github.com/protomem/secrets-keeper/internal/cryptor/base64"
 	"github.com/protomem/secrets-keeper/internal/cryptor/pkcs7"
+	"github.com/protomem/secrets-keeper/internal/passhash"
+	"github.com/protomem/secrets-keeper/internal/passhash/bcrypt"
 	"github.com/protomem/secrets-keeper/internal/storage"
 	"github.com/protomem/secrets-keeper/pkg/closer"
 	"github.com/protomem/secrets-keeper/pkg/logging"
@@ -27,6 +29,8 @@ type Server struct {
 	logger logging.Logger
 
 	store *storage.Storage
+
+	hasher passhash.Hasher
 
 	encoder   cryptor.Encoder
 	encryptor cryptor.Encryptor
@@ -59,6 +63,8 @@ func New(conf config.Config) (*Server, error) {
 		return nil, fmt.Errorf("%w: migrate: %s", err, op)
 	}
 
+	hasher := bcrypt.NewHasher(bcrypt.DefaultCost)
+
 	encoder := base64.NewEncoder(true)
 	paddinger := pkcs7.NewPaddinger()
 	encryptor := aes.NewEncryptor(base64.NewEncoder(false), paddinger)
@@ -73,6 +79,7 @@ func New(conf config.Config) (*Server, error) {
 		conf:      conf,
 		logger:    logger.With("module", "server"),
 		store:     store,
+		hasher:    hasher,
 		encoder:   encoder,
 		encryptor: encryptor,
 		router:    router,
