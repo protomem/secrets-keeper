@@ -1,4 +1,5 @@
 import { ISecret } from "@/entities/entites";
+import { slug } from "@/lib/slug";
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 
 interface GetSecretRequest {
@@ -31,7 +32,7 @@ export const secretsApi = createApi({
       query: ({ secretKey, secretPhrase }) => ({
         url:
           secretPhrase !== undefined
-            ? `/secrets/${secretKey}?secretPhrase=${secretPhrase}`
+            ? `/secrets/${secretKey}?secretPhrase=${slug(secretPhrase)}`
             : `/secrets/${secretKey}`,
       }),
     }),
@@ -40,7 +41,7 @@ export const secretsApi = createApi({
       query: ({ message, ttl, secretPhrase }) => ({
         url: `/secrets`,
         method: "POST",
-        body: { message, ttl, secretPhrase },
+        body: { message, ttl, secretPhrase: slug(secretPhrase) },
       }),
     }),
   }),
