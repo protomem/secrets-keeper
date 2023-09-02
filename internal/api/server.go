@@ -125,7 +125,7 @@ func (s *Server) setupRoutes() {
 
 	s.router.Handle("/health", s.handleHealthCheck()).Methods(http.MethodGet)
 
-	s.router.Handle("/api/secrets/{key}", s.handleGetSecret()).Methods(http.MethodGet)
+	s.router.Handle("/api/secrets/{key}", s.handleGetSecret()).Methods(http.MethodPost)
 	s.router.Handle("/api/secrets", s.handleCreateSecret()).Methods(http.MethodPost)
 
 	s.server.Handler = s.CORS()(s.router)

@@ -22,6 +22,10 @@ func (*Server) handleHealthCheck() http.Handler {
 }
 
 func (s *Server) handleGetSecret() http.Handler {
+	type Request struct {
+		SecretPhrase string `json:"secretPhrase"`
+	}
+
 	type Response struct {
 		Secret model.Secret `json:"secret"`
 	}
@@ -56,7 +60,18 @@ func (s *Server) handleGetSecret() http.Handler {
 			return
 		}
 
-		secretPhrase := r.URL.Query().Get("secretPhrase")
+		var req Request
+		err = json.NewDecoder(r.Body).Decode(&req)
+		if err != nil {
+			logger.Error("failed to decode request", "error", err)
+
+			w.WriteHeader(http.StatusBadRequest)
+			err = json.NewEncoder(w).Encode(map[string]string{
+				"error": "invalid request",
+			})
+
+			return
+		}
 
 		secret, err := usecase.GetSecret(
 			s.store.SecretRepo(),
@@ -65,7 +80,7 @@ func (s *Server) handleGetSecret() http.Handler {
 			s.encryptor,
 		)(ctx, usecase.GetSecretDTO{
 			SecretKey:    secretKey,
-			SecretPhrase: secretPhrase,
+			SecretPhrase: req.SecretPhrase,
 		})
 		if err != nil {
 			logger.Error("failed to get secret", "error", err)

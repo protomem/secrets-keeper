@@ -30,10 +30,9 @@ export const secretsApi = createApi({
   endpoints: (builder) => ({
     getSecret: builder.query<GetSecretResponse, GetSecretRequest>({
       query: ({ secretKey, secretPhrase }) => ({
-        url:
-          secretPhrase !== undefined
-            ? `/secrets/${secretKey}?secretPhrase=${slug(secretPhrase)}`
-            : `/secrets/${secretKey}`,
+        url: `/secrets/${secretKey}`,
+        method: "POST",
+        body: { secretPhrase: slug(secretPhrase) },
       }),
     }),
 

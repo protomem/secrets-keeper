@@ -141,7 +141,7 @@ export default function NewSecretForm({ onSubmit }: Props) {
                       Secret phrase
                     </FormLabel>
                     <FormControl>
-                      <Input placeholder="..." {...field} />
+                      <Input placeholder="..." {...field} autoComplete="off" />
                     </FormControl>
 
                     <FormMessage />

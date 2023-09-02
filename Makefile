@@ -25,7 +25,7 @@ run-docker: WEB_PORT=443
 run-docker: APP_ADDR=localhost:${APP_PORT}
 run-docker:
 	@APP_PORT=${APP_PORT} WEB_PORT=${WEB_PORT} APP_ADDR=${APP_ADDR} \
-		docker compose -p secrets-keeper -f ./build/docker-compose.yaml up -d
+		docker compose -p secrets-keeper -f ./build/docker-compose.yaml up -d --build
 
 
 .PHONY: stop-docker
